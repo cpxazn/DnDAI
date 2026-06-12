@@ -469,7 +469,7 @@
         "backend/tests/integration/test_attack_roll_action.py"
       ],
       "gaps": [
-        "Effects are generic app abstractions; Shield of Faith and Barkskin now have named SRD-backed actions, but most spells, class features, and items still use the generic substrate or are not modeled.",
+        "Effects are generic app abstractions; Shield, Shield of Faith, and Barkskin now have named SRD-backed actions, but most spells, class features, and items still use the generic substrate or are not modeled.",
         "Concentration damage saves and save-to-end behavior are not yet modeled.",
         "Concentration cleanup currently applies only to effects explicitly marked as requiring concentration.",
         "Combat speed is tracked only in active encounters; the backend now supports explicit position updates but still lacks a broader movement action-cost system."
@@ -519,6 +519,29 @@
         "The named cast action applies an AC floor of 17, preserves already-higher AC values, and rejects known targets beyond touch range.",
         "The backend represents touch range as 5 feet when distance is known.",
         "Spell slot spending, casting components, spell preparation, Bonus Action spell timing, willing-target checks, and exact 1-hour duration tracking are not yet modeled."
+      ]
+    },
+    {
+      "rule_id": "combat.effects.shield_ac_bonus",
+      "title": "Shield grants the caster a +5 AC bonus for 1 round and prevents Magic Missile damage.",
+      "domain": "combat.effects",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "spells-spells-giant-insect-shield",
+        "playing-the-game-playing-the-game-d20-tests-attack-rolls-armor-class"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/services/combat_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_action_service.py"
+      ],
+      "gaps": [
+        "The named cast action is self-only, applies the SRD +5 AC bonus, and stores it as a 1-round timed effect.",
+        "Magic Missile protection is reported in the action outcome, but Magic Missile damage prevention is not yet enforced because Magic Missile itself is not modeled as a deterministic damage action.",
+        "The triggering-hit retroactive AC check, Reaction resource consumption, off-turn reaction timing, spell slot spending, casting components, and spell preparation are not yet modeled."
       ]
     },
     {

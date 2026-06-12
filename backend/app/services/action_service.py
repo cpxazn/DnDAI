@@ -49,6 +49,7 @@ SUPPORTED_ACTION_TYPES = {
     "remove_combat_effect",
     "cast_shield_of_faith",
     "cast_barkskin",
+    "cast_shield",
     "start_combat",
     "end_combat",
 }
@@ -57,6 +58,7 @@ SUPPORTED_ACTION_TYPES = {
 SHIELD_OF_FAITH_RANGE_FEET = 60
 BARKSKIN_TOUCH_RANGE_FEET = 5
 BARKSKIN_AC_FLOOR = 17
+SHIELD_AC_BONUS = 5
 
 
 SRD_WEAPON_FALLBACK_PROFILES = {
@@ -230,6 +232,7 @@ def apply_actions(
             "remove_combat_effect",
             "cast_shield_of_faith",
             "cast_barkskin",
+            "cast_shield",
         }:
             event_index = _apply_combat_utility_action(
                 connection=connection,
@@ -1188,6 +1191,79 @@ def _apply_combat_utility_action(
                     "active_combatant_id": state.active_combatant_id,
                     "winning_side": state.winning_side,
                     "outcome_summary": state.outcome_summary,
+                },
+            )
+        )
+        return event_index + 1
+
+    if action.type == "cast_shield":
+        actor_ref = action.actor_id
+        if not actor_ref:
+            rejected_actions.append(_reject(action, "Shield requires an acting combatant."))
+            return event_index
+        combatant = find_active_combatant(
+            connection,
+            campaign_id=campaign_id,
+            session_id=session_id,
+            target_ref=actor_ref,
+        )
+        if combatant is None:
+            rejected_actions.append(_reject(action, "Acting combatant was not found in the active encounter."))
+            return event_index
+        if _combatant_has_incapacitating_condition(combatant):
+            rejected_actions.append(_reject(action, "Shield cannot be cast while the acting combatant is incapacitated."))
+            return event_index
+        target_ref = action.target_ids[0] if action.target_ids else actor_ref
+        if target_ref != actor_ref:
+            rejected_actions.append(_reject(action, "Shield has range Self and can target only the caster."))
+            return event_index
+        updated = add_combat_effect(
+            connection,
+            combatant_id=int(combatant["id"]),
+            effect_name="Shield",
+            effect_type="ac_bonus",
+            modifier=SHIELD_AC_BONUS,
+            duration_rounds=1,
+            source_combatant_id=int(combatant["id"]),
+            requires_concentration=False,
+        )
+        if updated is None:
+            rejected_actions.append(_reject(action, "Shield could not be applied."))
+            return event_index
+        event_id = _record_event(
+            connection,
+            campaign_id=campaign_id,
+            session_id=session_id,
+            turn_id=turn_id,
+            event_index=event_index,
+            event_type=action.type,
+            actor_id=action.actor_id,
+            target_id=str(combatant["id"]),
+            details={
+                "effect_name": "Shield",
+                "effect_type": "ac_bonus",
+                "modifier": SHIELD_AC_BONUS,
+                "duration_rounds": 1,
+                "requires_concentration": False,
+                "range": "Self",
+                "magic_missile_protection": True,
+            },
+        )
+        applied_actions.append(
+            AppliedAction(
+                type=action.type,
+                event_id=event_id,
+                outcome={
+                    "combatant_id": combatant["id"],
+                    "effect_name": "Shield",
+                    "effect_type": "ac_bonus",
+                    "armor_class": updated["armor_class"],
+                    "speed": updated.get("speed"),
+                    "duration_rounds": 1,
+                    "requires_concentration": False,
+                    "range": "Self",
+                    "magic_missile_protection": True,
+                    "ended_concentration_effects": updated.get("removed_concentration", []),
                 },
             )
         )

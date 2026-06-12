@@ -651,6 +651,250 @@ def test_apply_actions_casts_barkskin_as_named_ac_floor_effect(tmp_path: Path):
         assert guard.effects[0]["type"] == "ac_floor"
 
 
+def test_apply_actions_casts_shield_as_named_self_ac_bonus_effect(tmp_path: Path):
+    database_path = tmp_path / "shield.sqlite3"
+    initialize_database(database_path)
+
+    with get_connection(database_path) as connection:
+        campaign = create_campaign(connection, CampaignCreateRequest(name="Ashes"))
+        session = create_session(
+            connection,
+            SessionCreateRequest(campaign_id=campaign.id, name="Session 1"),
+        )
+        create_character(
+            connection,
+            CharacterCreateRequest(
+                campaign_id=campaign.id,
+                id="pc_wizard",
+                name="Wizard",
+                class_name="Wizard",
+                current_hp=10,
+                max_hp=10,
+                armor_class=12,
+            ),
+        )
+        apply_combat_operation(
+            connection,
+            CombatOperationRequest(
+                operation="start",
+                campaign_id=campaign.id,
+                session_id=session.id,
+                name="Tower Fight",
+                combatants=[
+                    CombatantInput(
+                        source_character_id="pc_wizard",
+                        name="Wizard",
+                        initiative=15,
+                        current_hp=10,
+                        max_hp=10,
+                        armor_class=12,
+                        is_player=True,
+                        party_order=1,
+                    ),
+                    CombatantInput(
+                        name="Skeleton",
+                        initiative=12,
+                        current_hp=7,
+                        max_hp=7,
+                        armor_class=13,
+                    ),
+                ],
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO turns (
+              campaign_id, session_id, turn_index, speaker_role, speaker_entity_id,
+              user_text, assistant_text, proposed_actions_json, retrieval_debug_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                campaign.id,
+                session.id,
+                1,
+                "assistant",
+                "pc_wizard",
+                None,
+                "Shield turn",
+                "[]",
+                None,
+                utc_now(),
+            ),
+        )
+        turn_id = int(connection.execute("SELECT last_insert_rowid() AS id").fetchone()["id"])
+
+        result = apply_actions(
+            connection,
+            campaign_id=campaign.id,
+            session_id=session.id,
+            turn_id=turn_id,
+            actions=[
+                ProposedAction(
+                    type="cast_shield",
+                    actor_id="pc_wizard",
+                    parameters={},
+                ),
+            ],
+        )
+
+        assert result.rejected_actions == []
+        assert len(result.applied_actions) == 1
+        outcome = result.applied_actions[0].outcome
+        assert outcome is not None
+        assert outcome["effect_name"] == "Shield"
+        assert outcome["effect_type"] == "ac_bonus"
+        assert outcome["armor_class"] == 17
+        assert outcome["duration_rounds"] == 1
+        assert outcome["requires_concentration"] is False
+        assert outcome["range"] == "Self"
+        assert outcome["magic_missile_protection"] is True
+
+        state = get_active_combat(connection, campaign.id, session.id)
+        assert state is not None
+        wizard = next(item for item in state.combatants if item.name == "Wizard")
+        assert wizard.armor_class == 17
+        assert wizard.effects == [
+            {
+                "name": "Shield",
+                "type": "ac_bonus",
+                "modifier": 5,
+                "duration_rounds": 1,
+                "source_combatant_id": wizard.id,
+                "requires_concentration": False,
+            }
+        ]
+
+        advanced = apply_combat_operation(
+            connection,
+            CombatOperationRequest(
+                operation="advance_turn",
+                campaign_id=campaign.id,
+                session_id=session.id,
+                encounter_id=state.encounter_id,
+            ),
+        )
+        assert advanced is not None
+        wizard_after_tick = next(item for item in advanced.combatants if item.name == "Wizard")
+        assert wizard_after_tick.armor_class == 12
+        assert wizard_after_tick.effects == []
+
+
+def test_apply_actions_rejects_shield_target_other_than_self(tmp_path: Path):
+    database_path = tmp_path / "shield-target.sqlite3"
+    initialize_database(database_path)
+
+    with get_connection(database_path) as connection:
+        campaign = create_campaign(connection, CampaignCreateRequest(name="Ashes"))
+        session = create_session(
+            connection,
+            SessionCreateRequest(campaign_id=campaign.id, name="Session 1"),
+        )
+        create_character(
+            connection,
+            CharacterCreateRequest(
+                campaign_id=campaign.id,
+                id="pc_wizard",
+                name="Wizard",
+                class_name="Wizard",
+                current_hp=10,
+                max_hp=10,
+                armor_class=12,
+            ),
+        )
+        create_character(
+            connection,
+            CharacterCreateRequest(
+                campaign_id=campaign.id,
+                id="pc_fighter",
+                name="Fighter",
+                class_name="Fighter",
+                current_hp=12,
+                max_hp=12,
+                armor_class=16,
+            ),
+        )
+        apply_combat_operation(
+            connection,
+            CombatOperationRequest(
+                operation="start",
+                campaign_id=campaign.id,
+                session_id=session.id,
+                name="Tower Fight",
+                combatants=[
+                    CombatantInput(
+                        source_character_id="pc_wizard",
+                        name="Wizard",
+                        initiative=15,
+                        current_hp=10,
+                        max_hp=10,
+                        armor_class=12,
+                        is_player=True,
+                        party_order=1,
+                    ),
+                    CombatantInput(
+                        source_character_id="pc_fighter",
+                        name="Fighter",
+                        initiative=12,
+                        current_hp=12,
+                        max_hp=12,
+                        armor_class=16,
+                        is_player=True,
+                        party_order=2,
+                    ),
+                ],
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO turns (
+              campaign_id, session_id, turn_index, speaker_role, speaker_entity_id,
+              user_text, assistant_text, proposed_actions_json, retrieval_debug_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                campaign.id,
+                session.id,
+                1,
+                "assistant",
+                "pc_wizard",
+                None,
+                "Shield target turn",
+                "[]",
+                None,
+                utc_now(),
+            ),
+        )
+        turn_id = int(connection.execute("SELECT last_insert_rowid() AS id").fetchone()["id"])
+
+        result = apply_actions(
+            connection,
+            campaign_id=campaign.id,
+            session_id=session.id,
+            turn_id=turn_id,
+            actions=[
+                ProposedAction(
+                    type="cast_shield",
+                    actor_id="pc_wizard",
+                    target_ids=["pc_fighter"],
+                    parameters={},
+                ),
+            ],
+        )
+
+        assert result.applied_actions == []
+        assert len(result.rejected_actions) == 1
+        assert result.rejected_actions[0].reason == "Shield has range Self and can target only the caster."
+
+        state = get_active_combat(connection, campaign.id, session.id)
+        assert state is not None
+        wizard = next(item for item in state.combatants if item.name == "Wizard")
+        fighter = next(item for item in state.combatants if item.name == "Fighter")
+        assert wizard.armor_class == 12
+        assert wizard.effects == []
+        assert fighter.armor_class == 16
+        assert fighter.effects == []
+
+
 def test_apply_actions_rejects_barkskin_beyond_touch_range(tmp_path: Path):
     database_path = tmp_path / "barkskin-range.sqlite3"
     initialize_database(database_path)

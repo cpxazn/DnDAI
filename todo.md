@@ -10,7 +10,7 @@
   - reach, versatile, loading, ammunition use/recovery, and thrown handling
   - incapacitating-condition action locks
   - generic timed combat bonuses for AC, attack, damage, and speed
-  - named Shield of Faith and Barkskin support as SRD-backed combat effects
+  - named Shield, Shield of Faith, and Barkskin support as SRD-backed combat effects
   - weapon mastery support for `cleave`, `graze`, `nick`, `push`, `sap`, `slow`, `topple`, and `vex`
   - partial Attack-action slot enforcement for supported single-class Extra Attack progression
 
@@ -25,20 +25,20 @@
 ## Latest verified baseline
 
 - Focused action-service verification last passed at:
-  - `9 passed`
+  - `11 passed`
 
 - Targeted backend verification last passed at:
-  - `62 passed`
+  - `64 passed`
 
 - Full backend verification last passed at:
-  - `72 passed`
+  - `74 passed`
 
 - Commands used:
   - `.\.venv\Scripts\python -m compileall backend\app`
   - `.\.venv\Scripts\python -m json.tool data\rules\traceability\rule_traceability_registry.json`
-  - `.\.venv\Scripts\python -m pytest backend\tests\integration\test_action_service.py`
-  - `.\.venv\Scripts\python -m pytest backend/tests/integration/test_attack_roll_action.py backend/tests/integration/test_action_service.py backend/tests/integration/test_action_validation.py backend/tests/integration/test_character_update.py`
-  - `.\.venv\Scripts\python -m pytest backend\tests`
+  - `.\.venv\Scripts\python -m pytest backend\tests\integration\test_action_service.py --basetemp C:\tmp\mydnd-pytest-action`
+  - `.\.venv\Scripts\python -m pytest backend/tests/integration/test_attack_roll_action.py backend/tests/integration/test_action_service.py backend/tests/integration/test_action_validation.py backend/tests/integration/test_character_update.py --basetemp C:\tmp\mydnd-pytest-targeted`
+  - `.\.venv\Scripts\python -m pytest backend\tests --basetemp C:\tmp\mydnd-pytest-full`
 
 
 ## Completed
@@ -104,9 +104,12 @@ Progress:
 - Shield of Faith now applies a deterministic `+2` AC bonus, marks the effect as concentration, and rejects known targets beyond 60 feet.
 - Added `cast_barkskin` as a named SRD-backed combat effect action.
 - Barkskin now applies an AC floor of 17, preserves already-higher AC values, and rejects known targets beyond touch range.
+- Added `cast_shield` as a named SRD-backed combat effect action.
+- Shield now applies a self-only `+5` AC bonus as a 1-round timed effect and reports Magic Missile protection in the action outcome.
 - The generic effect substrate remains `provisional`.
 - New registry entry `combat.effects.shield_of_faith_ac_bonus` is `partial`, because spell slot spending, components, preparation, Bonus Action spell timing, willing-target checks, exact 10-minute duration, and full concentration ending rules are not modeled yet.
 - New registry entry `combat.effects.barkskin_ac_floor` is `partial`, because spell slot spending, components, preparation, Bonus Action spell timing, willing-target checks, exact 1-hour duration, and full touch-range semantics beyond represented distances are not modeled yet.
+- New registry entry `combat.effects.shield_ac_bonus` is `partial`, because triggering-hit retroactive AC, Reaction resource consumption, off-turn reaction timing, spell slot spending, components, preparation, and deterministic Magic Missile damage prevention are not modeled yet.
 
 Touched files:
 - `backend/app/services/action_service.py`
@@ -120,10 +123,9 @@ Touched files:
 ### 5. Continue replacing generic effects with named SRD-backed effects
 
 Recommended next slice:
-- Add `Shield` as the next named effect:
-  - reaction/self `+5` AC for 1 round
-  - document the current limitation that triggering-attack retroactive AC and Magic Missile immunity are not fully modeled
-  - use the existing timed-effect machinery for 1-round expiry
+- Add another named effect that exercises a non-AC effect shape, such as:
+  - `Guiding Bolt`: ranged spell attack plus next-attack Advantage before the end of the caster's next turn, or
+  - `Haste`: speed/AC/Dex-save/action effects plus concentration and post-effect lethargy, likely as a larger partial slice.
 
 Recommended first move:
 - Search `data/rules/processed/srd_5_2_1_chunks.jsonl` for the chosen spell chunk.
@@ -161,6 +163,7 @@ Recommended first move:
 - Turn-local attack state is returned in `attack_roll` outcomes.
 - Shield of Faith now has a named SRD-backed deterministic combat action with focused integration coverage.
 - Barkskin now has a named SRD-backed deterministic combat action with focused integration coverage for AC-floor behavior and touch-range rejection.
+- Shield now has a named SRD-backed deterministic combat action with focused integration coverage for self-only targeting, timed `+5` AC, and expiry.
 
 
 ## Known remaining gaps
@@ -172,6 +175,8 @@ Recommended first move:
 - Generic combat effects still need broader SRD-backed named effect modeling.
 - Shield of Faith does not yet spend spell slots, enforce spell preparation/components, consume a modeled Bonus Action resource, require willing targets, or model exact 10-minute duration/concentration damage saves.
 - Barkskin does not yet spend spell slots, enforce spell preparation/components, consume a modeled Bonus Action resource, require willing targets, or model exact 1-hour duration.
+- Shield does not yet spend spell slots, enforce spell preparation/components, consume a modeled Reaction resource, validate triggering hits, retroactively change a triggering attack result, or prevent modeled Magic Missile damage.
+- Pytest may need an explicit writable `--basetemp C:\tmp\...` on this machine; the default pytest temp/cache paths can hit Windows permission errors in this agent sandbox.
 
 
 ## Good next response for the next agent
