@@ -1,0 +1,33 @@
+[project]
+name = "mydnd"
+version = "0.1.0"
+description = "Local-first DnD assistant app with FastAPI, SQLite, and a local LLM."
+readme = "IMPLEMENTATION_PLAN.md"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1.0",
+  "httpx>=0.28,<0.29",
+  "pydantic-settings>=2.3,<3.0",
+  "uvicorn>=0.30,<0.31",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2,<9.0",
+]
+
+[project.scripts]
+mydnd-import-rules = "backend.app.tools.import_rules:main"
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]

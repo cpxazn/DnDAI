@@ -1,0 +1,11 @@
+.venv/
+.vendor/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+node_modules/
+dist/
+build/
+.env
+data/app/

@@ -1,0 +1,542 @@
+{
+  "metadata": {
+    "version": 1,
+    "source_corpus": "SRD 5.2.1",
+    "chunk_file": "data/rules/processed/srd_5_2_1_chunks.jsonl",
+    "purpose": "Track which project rules are implemented, which SRD chunks support them, where they are implemented, and which tests verify them."
+  },
+  "status_legend": {
+    "implemented": "Behavior is implemented in code and covered by at least one relevant test.",
+    "partial": "Behavior is implemented only in part, has known gaps, or mixes rule-backed and assumed logic.",
+    "provisional": "Behavior is implemented as an app policy or simplifying assumption and is not yet fully grounded in chunked rules.",
+    "not_started": "Relevant rule exists in the corpus, but deterministic backend support is not implemented yet."
+  },
+  "rules": [
+    {
+      "rule_id": "combat.attack_roll.hit_vs_armor_class",
+      "title": "Attack rolls hit when total equals or exceeds Armor Class; natural 20 always hits and natural 1 always misses.",
+      "domain": "combat",
+      "status": "implemented",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "playing-the-game-playing-the-game-d20-tests-attack-rolls",
+        "playing-the-game-playing-the-game-d20-tests-attack-rolls-armor-class",
+        "playing-the-game-playing-the-game-d20-tests-attack-rolls-rolling-20-or-1"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "notes": "Core attack resolution path."
+    },
+    {
+      "rule_id": "combat.attack_roll.ability_modifier_and_proficiency",
+      "title": "Attack rolls use the correct ability modifier and proficiency bonus for weapon attacks.",
+      "domain": "combat",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "playing-the-game-playing-the-game-d20-tests-attack-rolls-ability-modifier",
+        "playing-the-game-playing-the-game-d20-tests-attack-rolls-proficiency-bonus",
+        "equipment-equipment-weapons-mastery-properties-part-1",
+        "equipment-equipment-weapons-mastery-properties-part-2"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/services/character_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py",
+        "backend/tests/integration/test_character_update.py"
+      ],
+      "gaps": [
+        "Weapon properties beyond ranged, finesse, thrown, and core SRD-backed profiles are not fully modeled."
+      ],
+      "notes": "Canonical weapon profiles and loadouts are preferred; missing weapon metadata is now enriched from SRD-backed fallback profiles."
+    },
+    {
+      "rule_id": "combat.condition.poisoned.attack_disadvantage",
+      "title": "Poisoned creatures have Disadvantage on attack rolls.",
+      "domain": "combat.conditions",
+      "status": "implemented",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "rules-glossary-rules-glossary-rules-definitions-poisoned-condition"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ]
+    },
+    {
+      "rule_id": "combat.condition.blinded.attack_interaction",
+      "title": "Blinded attackers have Disadvantage and attacks against blinded targets have Advantage.",
+      "domain": "combat.conditions",
+      "status": "implemented",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "rules-glossary-rules-glossary-rules-definitions-blinded-condition"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ]
+    },
+    {
+      "rule_id": "combat.condition.prone.attack_interaction",
+      "title": "Prone creatures have Disadvantage on attacks; melee attacks against them have Advantage and ranged attacks against them have Disadvantage.",
+      "domain": "combat.conditions",
+      "status": "implemented",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "rules-glossary-rules-glossary-rules-definitions-prone-condition"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ]
+    },
+    {
+      "rule_id": "combat.condition.incapacitated.action_lock",
+      "title": "Incapacitated creatures can't take actions, Bonus Actions, or Reactions; the current backend blocks represented deterministic combat actions for incapacitated combatants.",
+      "domain": "combat.conditions",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "rules-glossary-rules-glossary-rules-definitions-incapacitated-condition"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py",
+        "backend/tests/integration/test_action_service.py"
+      ],
+      "gaps": [
+        "The backend does not yet model the full action economy, so this rule currently gates the represented deterministic combat actions rather than every possible Action, Bonus Action, and Reaction."
+      ]
+    },
+    {
+      "rule_id": "combat.ranged_attack.long_range_disadvantage",
+      "title": "Ranged attacks beyond normal range and within long range have Disadvantage.",
+      "domain": "combat.ranged",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "playing-the-game-playing-the-game-combat-ranged-attacks-range",
+        "equipment-equipment-weapons-properties",
+        "equipment-equipment-weapons-mastery-properties-part-1",
+        "equipment-equipment-weapons-mastery-properties-part-2"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/services/combat_service.py",
+        "backend/app/schemas/characters.py",
+        "backend/app/schemas/combat.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "gaps": [
+        "Range enforcement only applies when target distance is provided explicitly or can be derived from stored combatant positions.",
+        "Combatant positions can now be updated explicitly, but movement speed budgets, terrain, cover, and pathing are not yet modeled."
+      ],
+      "notes": "SRD-backed weapon fallback profiles now carry normal and long ranges for deterministic ranged attack checks."
+    },
+    {
+      "rule_id": "combat.melee_attack.reach_property",
+      "title": "Reach weapons can make melee attacks out to 10 feet, and other melee attacks require the target to be within normal reach.",
+      "domain": "combat.melee",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "equipment-equipment-weapons-properties",
+        "equipment-equipment-weapons-mastery-properties-part-1",
+        "equipment-equipment-weapons-mastery-properties-part-2"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/services/combat_service.py",
+        "backend/app/schemas/characters.py",
+        "backend/app/schemas/combat.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "gaps": [
+        "Reach enforcement only applies when target distance is provided explicitly or can be derived from stored combatant positions.",
+        "Combatant positions can now be updated explicitly, but opportunity attacks and other non-attack reach interactions are not yet modeled."
+      ]
+    },
+    {
+      "rule_id": "combat.melee_attack.versatile_property",
+      "title": "Versatile weapons use their parenthetical damage value when used with two hands to make a melee attack.",
+      "domain": "combat.melee",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "equipment-equipment-weapons-properties",
+        "equipment-equipment-weapons-mastery-properties-part-1",
+        "equipment-equipment-weapons-mastery-properties-part-2"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/schemas/characters.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "gaps": [
+        "Versatile damage currently depends on the caller explicitly setting use_two_hands or two_handed on the attack action.",
+        "Thrown versatile weapons like spears and tridents still share the repo's broader thrown-versus-ranged modeling gap."
+      ]
+    },
+    {
+      "rule_id": "combat.melee_attack.light_property_extra_attack",
+      "title": "Light weapons can make one extra attack with a different Light weapon on the same turn, with the extra attack normally using a Bonus Action and not adding a positive ability modifier to damage.",
+      "domain": "combat.melee",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "equipment-equipment-weapons-properties",
+        "equipment-equipment-weapons-mastery-properties-part-1"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/schemas/characters.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "gaps": [
+        "The backend can now infer a Light extra attack from prior same-turn Light weapon attacks, infer Nick's Attack-action timing, and enforce a partial single-class Extra Attack slot model, but sequencing still relies on same-turn attack event history rather than a dedicated action resource.",
+        "The backend checks for a different Light weapon using prior event metadata and SRD-backed fallback profiles, but it does not yet model hand occupancy or item draw/stow interactions.",
+        "The broader Attack action and Extra Attack economy is still partial: multiclass non-stacking, warlock invocation variants, and non-attack-action extra attack sources are not yet modeled."
+      ]
+    },
+    {
+      "rule_id": "combat.ranged_attack.thrown_property",
+      "title": "Thrown melee weapons use melee attack ability logic in hand but become ranged attacks when thrown, using their thrown range.",
+      "domain": "combat.ranged",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "equipment-equipment-weapons-properties",
+        "equipment-equipment-weapons-mastery-properties-part-1",
+        "equipment-equipment-weapons-mastery-properties-part-2"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/schemas/characters.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "gaps": [
+        "Thrown attack mode is inferred from explicit action parameters or target distance; the backend does not yet model hand occupancy or explicit draw interactions.",
+        "Improvised throws of weapons without the Thrown property are not yet modeled."
+      ]
+    },
+    {
+      "rule_id": "combat.ranged_attack.loading_property",
+      "title": "Loading weapons can fire only one piece of ammunition each time you use an action, Bonus Action, or Reaction to fire them.",
+      "domain": "combat.ranged",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "equipment-equipment-weapons-properties",
+        "equipment-equipment-weapons-mastery-properties-part-1",
+        "equipment-equipment-weapons-mastery-properties-part-2"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/schemas/characters.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "gaps": [
+        "Loading enforcement currently depends on the attack action carrying an explicit attack_timing value when the timing is not the default action.",
+        "The broader action-economy model does not yet distinguish Attack action multiattack flows from other sources of extra attacks."
+      ]
+    },
+    {
+      "rule_id": "combat.ranged_attack.ammunition_property",
+      "title": "Ammunition weapons require one piece of the correct ammunition per attack, and after a fight half the expended ammunition can be recovered.",
+      "domain": "combat.ranged",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "equipment-equipment-weapons-properties"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/services/inventory_service.py",
+        "backend/app/schemas/characters.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "gaps": [
+        "Ammunition enforcement currently applies only to canonical characters with tracked inventory, not free-standing NPC combatants.",
+        "The 1-minute post-fight recovery time is not modeled explicitly; recovery is exposed as a deterministic post-encounter action.",
+        "Recovery currently depends on encounter-linked attack events recorded by the backend action pipeline."
+      ]
+    },
+    {
+      "rule_id": "combat.weapon_mastery.supported_properties",
+      "title": "Supported weapon mastery properties apply deterministic follow-up combat effects when the weapon profile explicitly enables mastery.",
+      "domain": "combat.weapon_mastery",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "equipment-equipment-weapons",
+        "equipment-equipment-weapons-mastery-properties-part-1",
+        "equipment-equipment-weapons-mastery-properties-part-2",
+        "classes-classes-fighter-fighter-class-features-level-1-weapon-mastery",
+        "classes-classes-ranger-ranger-class-features-level-1-weapon-mastery",
+        "classes-classes-rogue-rogue-class-features-level-1-weapon-mastery",
+        "classes-classes-paladin-paladin-class-features-level-1-weapon-mastery",
+        "classes-classes-barbarian-barbarian-class-features-level-1-weapon-mastery"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/schemas/characters.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "gaps": [
+        "The backend currently supports cleave, graze, nick, push, sap, slow, topple, and vex mastery behaviors.",
+        "Mastery availability is explicit per weapon profile; class-level mastery selection and rest-based weapon choice are not yet modeled.",
+        "Cleave currently requires the caller to provide an explicit cleave_target_id and depends on stored combatant positions for reach and adjacency checks.",
+        "Nick now uses inferred Light-property follow-up attacks plus a partial Attack-action slot model, but it still depends on the repo's incomplete hand occupancy and broader action-economy modeling.",
+        "Push now enforces the Large-or-smaller target restriction when combatant size is present, but combatant size itself still defaults to explicit combatant input rather than broader character/species/transformation modeling.",
+        "Slow currently reduces the target's tracked combat speed and enforces the non-stacking 10-foot cap, but its timing expires on the slowed combatant's turn boundary rather than being modeled as a strict source-turn start effect.",
+        "Topple now uses explicit combatant saving throw bonuses when present, proficiency-aware default save bonuses for canonical character combatants, and a deterministic +0 save fallback for stat-light NPC combatants; monster stat blocks, monster save proficiencies, and size/immune edge cases are not yet modeled."
+      ]
+    },
+    {
+      "rule_id": "combat.weapon_mastery.push_size_restriction",
+      "title": "Push mastery moves a Large or smaller target up to 10 feet away on a hit.",
+      "domain": "combat.weapon_mastery",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "equipment-equipment-weapons-mastery-properties-part-2"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/services/combat_service.py",
+        "backend/app/schemas/combat.py",
+        "backend/app/db/schema.sql"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "gaps": [
+        "Push still depends on stored combatant positions being present before it can move the target; those positions can be initialized or updated explicitly, and missing-position blockers are reported in the attack outcome, but map occupancy, collision, and path blocking are not modeled.",
+        "Combatant size currently comes from explicit combatant input or a Medium default; it is not yet synchronized from broader character species, transformation, or monster data."
+      ]
+    },
+    {
+      "rule_id": "combat.equipment.weapon_damage_profiles",
+      "title": "Weapon damage dice and core longbow/longsword profiles align with the imported equipment rules.",
+      "domain": "combat.equipment",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "equipment-equipment-weapons-mastery-properties-part-1",
+        "equipment-equipment-weapons-mastery-properties-part-2"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/schemas/characters.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py",
+        "backend/tests/integration/test_character_update.py"
+      ],
+      "gaps": [
+        "Some mastery properties and class-level mastery selection rules are not yet enforced."
+      ],
+      "notes": "Core fallback damage dice, versatile damage values, ranged profiles, loading flags, ammunition item mappings, and SRD mastery-property metadata are aligned to the imported SRD weapons tables."
+    },
+    {
+      "rule_id": "combat.turn_order.active_combatant_only",
+      "title": "Only the active combatant may take deterministic combat actions during an active encounter.",
+      "domain": "combat.turn_order",
+      "status": "implemented",
+      "implementation_kind": "app_policy",
+      "source_chunk_ids": [],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/services/combat_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py",
+        "backend/tests/integration/test_action_service.py"
+      ],
+      "notes": "This is an app-level orchestration policy rather than a direct SRD chunk mapping."
+    },
+    {
+      "rule_id": "combat.position.update_combatant_position",
+      "title": "Combatant positions can be updated explicitly during an active encounter and are consumed by deterministic range and reach checks.",
+      "domain": "combat.position",
+      "status": "implemented",
+      "implementation_kind": "app_policy",
+      "source_chunk_ids": [],
+      "implementation_refs": [
+        "backend/app/schemas/combat.py",
+        "backend/app/services/combat_service.py",
+        "backend/app/services/action_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_combat_service.py",
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "notes": "This is an app-level combat-state operation that makes existing range and reach enforcement usable after combat starts; it does not model movement action costs, terrain, cover, or pathing."
+    },
+    {
+      "rule_id": "combat.turn_economy.attack_timing_tracking",
+      "title": "The backend tracks turn-local attack timing state for action, Bonus Action, and Reaction attack sequencing, including Light extra attacks, Bonus Action attack caps, and loading timing buckets.",
+      "domain": "combat.turn_economy",
+      "status": "partial",
+      "implementation_kind": "app_policy",
+      "source_chunk_ids": [],
+      "implementation_refs": [
+        "backend/app/services/action_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "gaps": [
+        "Turn-local attack timing and slot usage are derived from recorded same-turn attack events rather than from a fully modeled action-resource object.",
+        "The backend now exposes partial single-class Extra Attack slot state for action-timed primary attacks and enforces one Bonus Action attack per turn, but it still does not model hand occupancy, multiclass non-stacking, reaction refresh timing, or warlock invocation variants for attack sequencing."
+      ],
+      "notes": "Useful combat-state scaffolding for deterministic sequencing; Bonus Action attack limiting is an app-policy cap over represented attack_roll actions rather than a full action-resource engine."
+    },
+    {
+      "rule_id": "combat.turn_economy.attack_action_extra_attack_slots",
+      "title": "The Attack action grants a limited number of action-timed primary attacks, including single-class Extra Attack progression for supported martial classes.",
+      "domain": "combat.turn_economy",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "rules-glossary-rules-glossary-rules-definitions-attack-action",
+        "classes-classes-barbarian-barbarian-class-features-level-5-extra-attack",
+        "classes-classes-fighter-fighter-class-features-level-5-extra-attack",
+        "classes-classes-fighter-fighter-class-features-level-11-two-extra-attacks",
+        "classes-classes-fighter-fighter-class-features-level-20-three-extra-attacks",
+        "classes-classes-monk-monk-class-features-level-5-extra-attack",
+        "classes-classes-paladin-paladin-class-features-level-5-extra-attack",
+        "classes-classes-ranger-ranger-class-features-level-5-extra-attack",
+        "character-creation-character-creation-multiclassing-class-features-extra-attack"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "gaps": [
+        "The backend models covered single-class Fighter, Barbarian, Monk, Paladin, and Ranger Extra Attack progression only for action-timed primary attacks, with over-limit rejections reporting used and available Attack-action slots.",
+        "Nick extra attacks are excluded from the primary Attack-action slot count, but the broader action economy is still reconstructed from same-turn attack events rather than a dedicated turn resource.",
+        "Multiclass non-stacking, warlock invocation variants like Thirsting Blade and Devouring Blade, and non-class sources of additional Attack-action attacks are not yet modeled."
+      ]
+    },
+    {
+      "rule_id": "combat.effects.generic_bonus_effects",
+      "title": "Temporary AC, attack, damage, and speed modifiers can be applied as timed combat effects.",
+      "domain": "combat.effects",
+      "status": "provisional",
+      "implementation_kind": "app_policy",
+      "source_chunk_ids": [],
+      "implementation_refs": [
+        "backend/app/services/combat_service.py",
+        "backend/app/services/action_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_action_service.py",
+        "backend/tests/integration/test_attack_roll_action.py"
+      ],
+      "gaps": [
+        "Effects are generic app abstractions; Shield of Faith and Barkskin now have named SRD-backed actions, but most spells, class features, and items still use the generic substrate or are not modeled.",
+        "Concentration damage saves and save-to-end behavior are not yet modeled.",
+        "Concentration cleanup currently applies only to effects explicitly marked as requiring concentration.",
+        "Combat speed is tracked only in active encounters; the backend now supports explicit position updates but still lacks a broader movement action-cost system."
+      ]
+    },
+    {
+      "rule_id": "combat.effects.shield_of_faith_ac_bonus",
+      "title": "Shield of Faith grants a +2 AC bonus to a target within 60 feet while the caster maintains concentration.",
+      "domain": "combat.effects",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "spells-spells-giant-insect-shield-of-faith",
+        "playing-the-game-playing-the-game-d20-tests-attack-rolls-armor-class"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/services/combat_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_action_service.py"
+      ],
+      "gaps": [
+        "The named cast action applies the SRD +2 AC bonus, marks the effect as concentration, and rejects known targets beyond 60 feet.",
+        "Spell slot spending, casting components, spell preparation, Bonus Action spell timing, willing-target checks, and exact 10-minute duration tracking are not yet modeled.",
+        "Concentration damage saves and broader concentration ending triggers are not yet modeled."
+      ]
+    },
+    {
+      "rule_id": "combat.effects.barkskin_ac_floor",
+      "title": "Barkskin gives a touched willing creature Armor Class 17 if its AC is lower.",
+      "domain": "combat.effects",
+      "status": "partial",
+      "implementation_kind": "deterministic_rule",
+      "source_chunk_ids": [
+        "spells-spells-spell-descriptions-barkskin",
+        "playing-the-game-playing-the-game-d20-tests-attack-rolls-armor-class"
+      ],
+      "implementation_refs": [
+        "backend/app/services/action_service.py",
+        "backend/app/services/combat_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_action_service.py"
+      ],
+      "gaps": [
+        "The named cast action applies an AC floor of 17, preserves already-higher AC values, and rejects known targets beyond touch range.",
+        "The backend represents touch range as 5 feet when distance is known.",
+        "Spell slot spending, casting components, spell preparation, Bonus Action spell timing, willing-target checks, and exact 1-hour duration tracking are not yet modeled."
+      ]
+    },
+    {
+      "rule_id": "combat.encounter_resolution.auto_end_when_one_side_remains",
+      "title": "Combat ends automatically when only one side has conscious combatants remaining.",
+      "domain": "combat",
+      "status": "implemented",
+      "implementation_kind": "app_policy",
+      "source_chunk_ids": [],
+      "implementation_refs": [
+        "backend/app/services/combat_service.py",
+        "backend/app/services/action_service.py"
+      ],
+      "test_refs": [
+        "backend/tests/integration/test_attack_roll_action.py",
+        "backend/tests/integration/test_combat_service.py"
+      ],
+      "notes": "Useful app automation; not currently mapped to a specific SRD chunk."
+    }
+  ]
+}
